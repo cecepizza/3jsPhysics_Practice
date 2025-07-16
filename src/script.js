@@ -42,16 +42,17 @@ const world = new Cannon.World()
 world.gravity.set(0, -9.82, 0)
 
 // MATERIALS 
-const concreteMaterial = new Cannon.Material('concrete')
-const plasticMaterial = new Cannon.Material('plastic')
+const defaultMaterial = new Cannon.Material('default')
+
 
 // contact materials 
     // how materials interact with each other 
-const concretePlasticContactMaterial = new Cannon.ContactMaterial(concreteMaterial, plasticMaterial, {
+const defaultContactMaterial = new Cannon.ContactMaterial(defaultMaterial, defaultMaterial, {
     friction: 0.1, // properties on what happens when two materials collide 
-    restitution: 1 // how bouncy the materials are 
+    restitution: .7 // how bouncy the materials are 
 })
-world.addContactMaterial(concretePlasticContactMaterial)
+world.addContactMaterial(defaultContactMaterial)
+world.defaultContactMaterial = defaultContactMaterial
 
 // Sphere
 const sphereShape = new Cannon.Sphere(0.5) 
@@ -59,8 +60,9 @@ const sphereBody = new Cannon.Body({
     mass: 1, 
     position: new Cannon.Vec3(0, 3, 0),
     shape: sphereShape,
-    material: plasticMaterial
+    material: defaultMaterial
 })
+sphereBody.applyLocalForce(new Cannon.Vec3(150, 0, 0), new Cannon.Vec3(0, 0, 0))
 world.addBody(sphereBody)
 
 // FLOOR
@@ -68,7 +70,7 @@ const floorBody = new Cannon.Body({
     mass: 0,
     shape: new Cannon.Plane()
 })
-floorBody.material = concreteMaterial
+floorBody.material = defaultMaterial
 floorBody.quaternion.setFromAxisAngle(new Cannon.Vec3(1, 0, 0), - Math.PI * 0.5)
 world.addBody(floorBody)
 
@@ -183,6 +185,7 @@ const tick = () =>
     // console.log(deltaTime)
 
     // UPDATE PHYSICS WORLD 
+    sphereBody.applyForce(new Cannon.Vec3(-.5, 0, 0), sphereBody.position)
     world.step(1/60, deltaTime, 3)
         // update the threejs sphere with the physics sphere 
     sphere.position.copy(sphereBody.position)
