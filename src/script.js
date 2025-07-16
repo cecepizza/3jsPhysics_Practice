@@ -8,6 +8,12 @@ console.log('cannon', Cannon)
  * Debug
  */
 const gui = new GUI()
+const debugObject = {}
+
+debugObject.createSphere = () => {
+    createSphere(Math.random() * 0.5, { x: (Math.random() - 0.5) * 3, y: 3, z: (Math.random() - 0.5) * 3})
+}
+gui.add(debugObject, 'createSphere')
 
 /**
  * Base
@@ -54,42 +60,6 @@ const defaultContactMaterial = new Cannon.ContactMaterial(defaultMaterial, defau
 world.addContactMaterial(defaultContactMaterial)
 world.defaultContactMaterial = defaultContactMaterial
 
-// Sphere
-const sphereShape = new Cannon.Sphere(0.5) 
-const sphereBody = new Cannon.Body({
-    mass: 1, 
-    position: new Cannon.Vec3(0, 3, 0),
-    shape: sphereShape,
-    material: defaultMaterial
-})
-sphereBody.applyLocalForce(new Cannon.Vec3(150, 0, 0), new Cannon.Vec3(0, 0, 0))
-world.addBody(sphereBody)
-
-// FLOOR
-const floorBody = new Cannon.Body({
-    mass: 0,
-    shape: new Cannon.Plane()
-})
-floorBody.material = defaultMaterial
-floorBody.quaternion.setFromAxisAngle(new Cannon.Vec3(1, 0, 0), - Math.PI * 0.5)
-world.addBody(floorBody)
-
-
-/**
- * Test sphere
- */
-const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    new THREE.MeshStandardMaterial({
-        metalness: 0.3,
-        roughness: 0.4,
-        envMap: environmentMapTexture,
-        envMapIntensity: 0.5
-    })
-)
-sphere.castShadow = true
-sphere.position.y = 0.5
-scene.add(sphere)
 
 /**
  * Floor
@@ -107,6 +77,16 @@ const floor = new THREE.Mesh(
 floor.receiveShadow = true
 floor.rotation.x = - Math.PI * 0.5
 scene.add(floor)
+
+// FLOOR
+const floorBody = new Cannon.Body({
+    mass: 0,
+    shape: new Cannon.Plane()
+})
+floorBody.material = defaultMaterial
+floorBody.quaternion.setFromAxisAngle(new Cannon.Vec3(1, 0, 0), - Math.PI * 0.5)
+world.addBody(floorBody)
+
 
 /**
  * Lights
@@ -171,6 +151,44 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
+/** 
+ * utils
+ */
+const objectsToUpdate = []
+
+const createSphere = (radius, position) =>
+{
+    // Three.js mesh
+    const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 32, 32),
+        new THREE.MeshStandardMaterial({
+            metalness: 0.3, 
+            roughness: 0.4, 
+            envMap: environmentMapTexture, 
+        })
+    )
+        mesh.castShadow = true 
+mesh.position.copy(position)
+scene.add(mesh) 
+
+// Cannon JS body
+const shape = new Cannon.Sphere(radius)
+    const body = new Cannon.Body({
+        mass: 1,
+        postition: new Cannon.Vec3(0,3,0),
+        shape, 
+        material: defaultMaterial
+    })
+body.position.copy(position)
+world.addBody(body)
+
+// save in objectsToUpdate array 
+objectsToUpdate.push({ mesh, body })
+}
+
+// create a sphere and provide position and radius 
+createSphere(0.5, { x: 0, y: 3, z: 0 })
+
 /**
  * Animate
  */
@@ -185,10 +203,13 @@ const tick = () =>
     // console.log(deltaTime)
 
     // UPDATE PHYSICS WORLD 
-    sphereBody.applyForce(new Cannon.Vec3(-.5, 0, 0), sphereBody.position)
     world.step(1/60, deltaTime, 3)
+
         // update the threejs sphere with the physics sphere 
-    sphere.position.copy(sphereBody.position)
+        for(const object of objectsToUpdate)
+        {
+            object.mesh.position.copy(object.body.position)
+        }
     
     // Update controls
     controls.update()
