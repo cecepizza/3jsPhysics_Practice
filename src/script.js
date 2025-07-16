@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+import Cannon from 'cannon'
 
+console.log('cannon', Cannon)
 /**
  * Debug
  */
@@ -30,6 +32,46 @@ const environmentMapTexture = cubeTextureLoader.load([
     '/textures/environmentMaps/0/pz.png',
     '/textures/environmentMaps/0/nz.png'
 ])
+
+/**
+ * PHYSICS
+ */
+// World
+const world = new Cannon.World()
+    // Gravity is a three dimensional vector 
+world.gravity.set(0, -9.82, 0)
+
+// MATERIALS 
+const concreteMaterial = new Cannon.Material('concrete')
+const plasticMaterial = new Cannon.Material('plastic')
+
+// contact materials 
+    // how materials interact with each other 
+const concretePlasticContactMaterial = new Cannon.ContactMaterial(concreteMaterial, plasticMaterial, {
+    friction: 0.1, // properties on what happens when two materials collide 
+    restitution: 1 // how bouncy the materials are 
+})
+world.addContactMaterial(concretePlasticContactMaterial)
+
+// Sphere
+const sphereShape = new Cannon.Sphere(0.5) 
+const sphereBody = new Cannon.Body({
+    mass: 1, 
+    position: new Cannon.Vec3(0, 3, 0),
+    shape: sphereShape,
+    material: plasticMaterial
+})
+world.addBody(sphereBody)
+
+// FLOOR
+const floorBody = new Cannon.Body({
+    mass: 0,
+    shape: new Cannon.Plane()
+})
+floorBody.material = concreteMaterial
+floorBody.quaternion.setFromAxisAngle(new Cannon.Vec3(1, 0, 0), - Math.PI * 0.5)
+world.addBody(floorBody)
+
 
 /**
  * Test sphere
@@ -131,11 +173,20 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
  * Animate
  */
 const clock = new THREE.Clock()
+let oldElapsedTime = 0
 
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - oldElapsedTime
+    oldElapsedTime = elapsedTime
+    // console.log(deltaTime)
 
+    // UPDATE PHYSICS WORLD 
+    world.step(1/60, deltaTime, 3)
+        // update the threejs sphere with the physics sphere 
+    sphere.position.copy(sphereBody.position)
+    
     // Update controls
     controls.update()
 
