@@ -15,6 +15,19 @@ debugObject.createSphere = () => {
 }
 gui.add(debugObject, 'createSphere')
 
+debugObject.createBox = () => {
+    const width = Math.random() * 0.5 + 0.2
+    const height = Math.random() * 0.5 + 0.2
+    const depth = Math.random() * 0.5 + 0.2
+    const position = {
+        x: (Math.random() - 0.5) * 3,
+        y: 3,
+        z: (Math.random() - 0.5) * 3
+    }
+    createBox(width, height, depth, position)
+}
+gui.add(debugObject, 'createBox')
+
 /**
  * Base
  */
@@ -156,18 +169,20 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
  */
 const objectsToUpdate = []
 
+const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32)
+const sphereMaterial = new THREE.MeshStandardMaterial({
+    metalness: 0.3, 
+    roughness: 0.4, 
+    envMap: environmentMapTexture, 
+})
 const createSphere = (radius, position) =>
 {
     // Three.js mesh
     const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 32, 32),
-        new THREE.MeshStandardMaterial({
-            metalness: 0.3, 
-            roughness: 0.4, 
-            envMap: environmentMapTexture, 
-        })
+        sphereGeometry, sphereMaterial
     )
-        mesh.castShadow = true 
+    mesh.scale.set(radius, radius, radius)
+    mesh.castShadow = true 
 mesh.position.copy(position)
 scene.add(mesh) 
 
@@ -184,6 +199,36 @@ world.addBody(body)
 
 // save in objectsToUpdate array 
 objectsToUpdate.push({ mesh, body })
+}
+
+const boxGeometry = new THREE.BoxGeometry(1, 1, 1)
+const boxMaterial = new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+})
+const createBox = (width, height, depth, position) => {
+    // Three.js mesh
+    const mesh = new THREE.Mesh(
+        boxGeometry, boxMaterial
+    )
+    mesh.scale.set(width, height, depth)
+    mesh.castShadow = true
+    mesh.position.copy(position)
+    scene.add(mesh)
+
+    // Cannon.js body
+    const shape = new Cannon.Box(new Cannon.Vec3(width * 0.5, height * 0.5, depth * 0.5))
+    const body = new Cannon.Body({
+        mass: 1,
+        shape,
+        material: defaultMaterial
+    })
+    body.position.copy(position)
+    world.addBody(body)
+
+    // Save in objectsToUpdate array
+    objectsToUpdate.push({ mesh, body })
 }
 
 // create a sphere and provide position and radius 
@@ -209,6 +254,7 @@ const tick = () =>
         for(const object of objectsToUpdate)
         {
             object.mesh.position.copy(object.body.position)
+            object.mesh.quaternion.copy(object.body.quaternion)
         }
     
     // Update controls
